@@ -1,0 +1,29 @@
+实现一个 B+ 树索引引擎（插入分裂 / 查找 / 范围扫描 / 删除合并），
+只用 Python 标准库。
+
+背景：btree.py 是骨架（BPlusTree 类方法 raise NotImplementedError），
+tests/test_btree.py 是验收测试。
+
+需求（feature，仿数据库索引核心语义）：
+1. 结构：BPlusTree(order)，order 为节点最大键数（默认 4）——
+   内部节点存 [keys] + 子指针，叶子节点存 [keys] + [values]
+   + next 链
+2. insert(key, value)：沿树定位叶子插入；满节点分裂
+   （中间键上提到父节点，父满递归分裂）；根分裂时树高 +1
+3. search(key) -> value | None；严格二分定位
+4. range_query(k1, k2) -> [(key, value)...] 按 key 升序（叶子链）
+5. delete(key)：叶子删除；下溢（< ceil(order/2)）时先借兄弟，
+   借不到合并；内部节点相应调整；根下溢到只剩单子 -> 降层
+6. stats() -> {height, nodes, internal_nodes, leaf_nodes,
+   min_keys, max_keys, entries}
+7. 同 key 覆盖写
+
+验收：
+- python -m pytest tests/test_btree.py -q 全绿
+- 覆盖：插入查找/覆盖写/范围扫描有序/分裂后有序且树高增长/
+  根分裂/删除借兄弟/删除合并/删空后树降层/顺序插入 500+ 保持
+  对数结构（height 不超过期望）/stats 字段
+
+要求：
+- 只 import 标准库；必须真实维护 B+ 树结构（不能退化成排序
+  list，测试会用 stats 与大规模插入断言树形）；别改测试
